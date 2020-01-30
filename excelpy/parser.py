@@ -3,12 +3,16 @@ import multiprocessing
 from openpyxl import load_workbook
 
 STOP_CODON = "***STOP***"
+DATA_DIR = './data'
 
 queues = {}
 processes = []
 
-def csvWriter(filename, queue):
-	with open(filename + ".csv", "wb") as csvFile:
+
+def csv_writer(filename, queue):
+	"""
+	"""
+	with open(f'{DATA_DIR}/{filename}.csv', "w") as csvFile:
 		writer = csv.writer(
 			csvFile,
 			lineterminator="\n",
@@ -22,37 +26,50 @@ def csvWriter(filename, queue):
 			if line == STOP_CODON:
 				return
 
-			print "WRITING ({0})".format(str(line))
+			print(f'WRITING ({str(line)})')
 			writer.writerow(line)
 
-def parseWorksheet(ws):
+
+def parse_worksheet(ws):
+	"""
+	"""
 	queue = queues[ws.title]
 
 	for row in ws.rows:
 		data = []
 
 		for cell in row:
-			print "READING ({0})".format(str(cell.value))
+			print(f'READING ({str(cell.value)})')
 			data.append(cell.value)
 
 		queue.put(data)
 	queue.put(STOP_CODON)
 
-def parseWorkbook(wb):
+
+def parse_workbook(wb):
+	"""
+	"""
 	for ws in wb.worksheets:
 		queue = multiprocessing.Queue()
-		writerProcess = multiprocessing.Process(target=csvWriter, args=[ws.title, queue])
-		writerProcess.start()
-		processes.append(writerProcess)
+		writer_process = multiprocessing.Process(
+			target=csv_writer,
+			args=[ws.title, queue]
+		)
+		writer_process.start()
+		processes.append(writer_process)
 		queues[ws.title] = queue
 
-		parseWorksheet(ws)
+		parse_worksheet(ws)
 
-def main():
-	parseWorkbook(load_workbook(filename="input.xlsx", read_only=True, data_only=True))
+
+def start():
+	"""
+	"""
+	parse_workbook(load_workbook(
+		filename="./test/input.xlsx",
+		read_only=True,
+		data_only=True
+	))
 
 	for process in processes:
 		process.join()
-
-if __name__ == "__main__":
-	main()
